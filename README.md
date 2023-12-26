@@ -1,2 +1,4 @@
 # MainTree
-Main Wordpress Plugin to collect needed functionalities over the projects
+
+Main React based Wordpress Plugin to collect needed functionalities over the projects.
+
