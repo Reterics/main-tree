@@ -1,7 +1,39 @@
 import {createRoot} from "react-dom/client";
+import {useState} from "react";
+import {NavigationComponent} from "./components/NavigationComponent";
+import {DashboardComponent} from "./components/DashboardComponent";
+import {SettingsComponent} from "./components/SettingsComponent";
+import {AboutComponent} from "./components/AboutComponent";
+import {MenuOption} from "./types";
+import './admin.css';
 
 function MainTreeApp() {
-    return <span>Hello from MainTree!</span>;
+    const [page, setPage] = useState(location.hash.substring(1) || 'dashboard')
+
+    const menuOptions: MenuOption[] = [
+        {
+            label: 'Dashboard',
+            link: 'dashboard',
+            component: <DashboardComponent />
+        },
+        {
+            label: 'Settings',
+            link: 'settings',
+            component: <SettingsComponent />
+        },
+        {
+            label: 'About',
+            link: 'about',
+            component: <AboutComponent />
+        }
+    ];
+
+    const activeMenu = menuOptions.find(menu=>menu.link === page) || menuOptions[0];
+
+    return (<div>
+        <NavigationComponent page={page} setPage={setPage} menuOptions={menuOptions}/>
+        {activeMenu.component}
+    </div>);
 }
 
 window.addEventListener(

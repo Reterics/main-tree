@@ -1,0 +1,8 @@
+#wpwrap > #wpcontent #main-tree {
+    margin-left: -20px;
+}
+@media screen and (max-width: 782px) {
+    #wpwrap > #wpcontent #main-tree {
+        margin-left: -10px;
+    }
+}
