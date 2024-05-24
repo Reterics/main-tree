@@ -4,7 +4,7 @@ import {NavigationComponent} from "./components/NavigationComponent";
 import {DashboardComponent} from "./components/DashboardComponent";
 import {SettingsComponent} from "./components/SettingsComponent";
 import {AboutComponent} from "./components/AboutComponent";
-import {MenuOption} from "./types";
+import {MenuOption} from "./types/common";
 import './admin.css';
 
 function MainTreeApp() {
@@ -30,9 +30,11 @@ function MainTreeApp() {
 
     const activeMenu = menuOptions.find(menu=>menu.link === page) || menuOptions[0];
 
-    return (<div>
+    return (<div className={'mt-nav-outer'}>
         <NavigationComponent page={page} setPage={setPage} menuOptions={menuOptions}/>
-        {activeMenu.component}
+        <div className={'mt-container'}>
+            {activeMenu.component}
+        </div>
     </div>);
 }
 
