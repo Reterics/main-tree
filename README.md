@@ -29,7 +29,7 @@ The entry file for the root React component is [/assets/src/admin.tsx](assets%2F
 
 ## Contribute
 
-There are many ways to [contribute](https://github.com/Reterics/main-tree/blob/main/CONTRIBUTING.md) to Quick Chat API Client.
+There are many ways to [contribute](https://github.com/Reterics/main-tree/blob/main/CONTRIBUTING.md) to Main Tree.
 * [Submit bugs](https://github.com/Reterics/main-tree/issues) and help us verify fixes as they are checked in.
 * Review the [source code changes](https://github.com/Reterics/main-tree/pulls).
 * [Contribute bug fixes](https://github.com/Reterics/main-tree/blob/main/CONTRIBUTING.md).
