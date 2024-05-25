@@ -18,9 +18,14 @@ Copy the installation in your wordpress /wp-content/plugins/ directory and open 
 
 ![Activate Plugin](./assets/images/activate.png)
 
-After activation you can open the plugin directly from the menu
+After activation you can open the plugin directly from the left sidebar menu.
 
-![Open Plugin](./assets/images/open.png)
+### Development Notes
+
+[main-tree.php](main-tree.php) is the entry PHP file that initializes the plugin and make sure every asset is loaded.
+
+The entry file for the root React component is [/assets/src/admin.tsx](assets%2Fsrc%2Fadmin.tsx)
+
 
 ## Contribute
 
