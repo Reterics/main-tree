@@ -1,3 +1,14 @@
+:root {
+    --background: #efefef;
+    --color: black;
+    --border: #c6c6c6;
+
+    --nav-background: #1d2327;
+    --nav-color: #f0f0f1;
+    --nav-active-background: #2271b1;
+    --nav-active-color: #fff;
+}
+
 #wpwrap > #wpcontent #main-tree {
     margin-left: -20px;
 }
@@ -15,13 +26,13 @@
 
 
 .mt-container {
-    background: #efefef;
+    background: var(--background);
     height: 100%;
     display: flex;
     flex: 1;
     margin: 0 0.3em 0.3em;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
-    border: 1px solid #c6c6c6;
+    border: 1px solid var(--border);
     padding: 0.5em;
 }

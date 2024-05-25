@@ -3,6 +3,7 @@
 [![MainTree](https://github.com/Reterics/main-tree/actions/workflows/webpack.yml/badge.svg)](https://github.com/Reterics/main-tree/actions/workflows/webpack.yml)
 
 React based general purpose plugin for Wordpress.
+![Plugin Preview](./assets/images/preview.png)
 
 ## Getting Started
 

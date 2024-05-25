@@ -35,7 +35,7 @@ function my_admin_menu() {
             <div id="'.MAIN_TREE.'"></div>
         ';
 		},
-		'dashicons-schedule',
+		'dashicons-admin-network',
 		3
 	);
 }

@@ -1,0 +1,26 @@
+
+
+.form-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.form-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    padding: 0.5em 2em 0.5em 0.5em;
+    font-size: 1.1em;
+    text-align: start;
+}
+
+.form-footer {
+    margin-top: 1em;
+}
+
+.form-value {
+
+}

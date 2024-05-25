@@ -2,7 +2,7 @@ ul.navigation {
     list-style-type: none;
     padding: 0;
     overflow: hidden;
-    background-color: #333;
+    background-color: var(--nav-background);
     margin: 0.3em 0.3em 0;
 }
 
@@ -20,7 +20,7 @@ ul.navigation li.logo > img {
 
 ul.navigation li a {
     display: block;
-    color: white;
+    color: var(--nav-color);
     text-align: center;
     padding: 14px 16px;
     text-decoration: none;
@@ -31,6 +31,11 @@ ul.navigation li a:hover:not(.active) {
 }
 
 ul.navigation .active {
-    background-color: #5a5a5a;
+    background-color: var(--nav-active-background);
+}
+
+
+ul.navigation .active a{
+    color: var(--nav-active-color);
 }
 
