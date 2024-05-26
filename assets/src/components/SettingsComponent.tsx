@@ -1,6 +1,20 @@
 import './SettingsComponent.css';
+import SettingsService from "../services/SettingsService";
+import {useEffect, useState} from "react";
+import {SettingType} from "../types/common";
 
 export const SettingsComponent = () => {
+    const [settings, setSettings] = useState<SettingType>({});
+    useEffect(() => {
+        SettingsService
+            .pull()
+            .then((_settings)=>{
+                if (_settings) {
+                    setSettings(_settings);
+                }
+            });
+    }, []);
+
     return (
         <div>
             <h3>Welcome to the Settings</h3>

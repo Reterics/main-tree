@@ -13,3 +13,13 @@ export interface NavigationArguments {
     page: string
     setPage: (target: string) => void
 }
+
+export interface SettingType {
+    [key: string]: string|null;
+}
+
+export interface WPUser {
+    restUrl: string
+    nonce: string
+    public?: boolean
+}
