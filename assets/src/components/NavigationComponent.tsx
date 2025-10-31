@@ -1,3 +1,4 @@
+import React from "react";
 import {NavigationArguments} from "../types/common";
 import './NavigationComponent.css';
 import logo from '../../images/logo.svg';

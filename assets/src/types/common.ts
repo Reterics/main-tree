@@ -1,10 +1,7 @@
-import React from "react";
-
-
 export interface MenuOption {
     label: string
     link: string
-    component: React.ComponentElement<any, any>
+    component: JSX.Element
     alignRight?: boolean
 }
 
