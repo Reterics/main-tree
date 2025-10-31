@@ -1,15 +1,23 @@
 @import "tailwindcss";
 :root {
-    --background: #efefef;
-    --color: black;
-    --border: #c6c6c6;
+    /* Theme */
+    --primary: #2271b1; /* main color */
+    --primary-700: #1a5a8e;
+    --primary-100: #e6f0f8;
+
+    --background: #efefef; /* legacy */
+    --surface: #f6f7f7; /* content background */
+    --color: #111827; /* gray-900 */
+    --muted: #6b7280; /* gray-500 */
+    --border: #e5e7eb; /* gray-200 */
 
     --nav-background: #1d2327;
     --nav-color: #f0f0f1;
-    --nav-active-background: #2271b1;
+    --nav-active-background: var(--primary);
     --nav-active-color: #fff;
 }
 
+/* Fit WP Admin chrome spacing */
 #wpwrap > #wpcontent #main-tree {
     margin-left: -20px;
 }
@@ -19,15 +27,10 @@
     }
 }
 
-.mt-nav-outer {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 32px - 65px);
-}
-
-
+/* Legacy containers kept for compatibility; AppShell provides new layout */
+.mt-nav-outer { display: flex; flex-direction: column; height: calc(100vh - 32px - 65px); }
 .mt-container {
-    background: var(--background);
+    background: var(--surface);
     height: 100%;
     display: flex;
     flex: 1;

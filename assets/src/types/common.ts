@@ -19,4 +19,5 @@ export interface WPUser {
     restUrl: string
     nonce: string
     public?: boolean
+    adminUrl?: string
 }
