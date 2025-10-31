@@ -9,12 +9,12 @@ export const CodeSnippetsComponent: React.FC = () => (
             <p className="text-sm text-gray-600">Manage custom PHP snippets safely.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
-            <div className="bg-white/80 border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6">
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6">
                 <h4 className="text-md font-medium text-gray-900 mb-2">Snippets</h4>
                 <p className="text-sm text-gray-600 mb-4">Browse all snippets or add a new one.</p>
                 <div className="flex gap-3">
-                    <ExternalLinkButton href={adminUrl('admin.php?page=snippets')}>All Snippets</ExternalLinkButton>
-                    <ExternalLinkButton href={adminUrl('admin.php?page=snippets&action=add')} className="bg-slate-600 hover:bg-slate-700">Add New</ExternalLinkButton>
+                    <ExternalLinkButton href={adminUrl('admin.php?page=snippets')} variant="secondary" size="md">All Snippets</ExternalLinkButton>
+                    <ExternalLinkButton href={adminUrl('admin.php?page=snippets&action=add')} variant="primary" size="md">Add New</ExternalLinkButton>
                 </div>
             </div>
         </div>

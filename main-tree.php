@@ -102,7 +102,15 @@ add_action('admin_enqueue_scripts', function($hook): void {
     $script_args = include( plugin_dir_path( __FILE__ ) . 'assets/public/admin.asset.php');
     wp_enqueue_script('admin-typescript', plugins_url('assets/public/admin.js', __FILE__),
 	    $script_args['dependencies'], $script_args['version']);
-    wp_enqueue_style('admin-stylesheet', plugins_url('assets/public/admin.css', __FILE__));
+
+	$deps = ['common', 'forms', 'buttons', 'wp-admin', 'dashicons'];
+
+	wp_enqueue_style(
+		'admin-stylesheet',
+		plugins_url('assets/public/admin.css', __FILE__),
+		$deps,
+		filemtime(plugin_dir_path(__FILE__) . 'assets/public/admin.css')
+	);
 
     $inline_script = sprintf(
                 'window.wpUser = %s;',
@@ -114,7 +122,7 @@ add_action('admin_enqueue_scripts', function($hook): void {
             );
 
     wp_add_inline_script('admin-typescript', $inline_script, 'before');
-});
+}, 10);
 
 
 // Register REST API endpoint

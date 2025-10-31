@@ -1,6 +1,7 @@
 import React from "react";
 import './SettingsComponent.css';
 import {useSettings} from "../context/SettingsContext";
+import { Button } from "./common/Button";
 
 export const SettingsComponent = () => {
     const { settings, setField, saveAll, saving, saveResult, loading } = useSettings();
@@ -27,15 +28,15 @@ export const SettingsComponent = () => {
                         <label htmlFor='openai_api_key' className="sm:col-span-1 text-sm font-medium text-gray-700">OpenAI API Key</label>
                         <div className="sm:col-span-3">
                             <input id='openai_api_key' type='text' value={settings['openai_api_key'] || ''} onChange={handleChange('openai_api_key')}
-                                   className="w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-50"
+                                   className="w-full rounded-md border-gray-300 focus:border-[var(--primary)] focus:ring-[var(--primary)] text-sm disabled:bg-gray-50"
                                    placeholder="sk-..." disabled={loading || saving} />
                         </div>
                     </div>
 
                     <div className="mt-6 flex items-center gap-3">
-                        <button type='button' onClick={handleSave} disabled={saving} className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white ${saving ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-indigo-500`}>
+                        <Button variant="primary" size="md" onClick={handleSave} disabled={saving}>
                             {saving ? 'Saving…' : 'Save Changes'}
-                        </button>
+                        </Button>
                         {saveResult === 'ok' && <span className="text-sm text-green-600">Saved.</span>}
                         {saveResult === 'fail' && <span className="text-sm text-red-600">Save failed.</span>}
                         {loading && <span className="text-sm text-gray-500">Loading…</span>}
