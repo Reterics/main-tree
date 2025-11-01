@@ -46,7 +46,8 @@ function MainTreeApp() {
         { label: 'About', link: 'about', component: <AboutComponent /> },
     ]), []);
 
-    const activeMenu = menuOptions.find(menu=>menu.link === page) || menuOptions[0];
+    // Support deep links like forms/new or forms/edit/:id by matching prefix
+    const activeMenu = menuOptions.find(menu => page === menu.link || page.startsWith(menu.link + '/')) || menuOptions[0];
 
     return (
         <AppShell

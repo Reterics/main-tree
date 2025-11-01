@@ -306,7 +306,7 @@ function mt_forms_list(WP_REST_Request $request) {
 
 /**
  * REST: POST /forms — create a form
- * Expected payload: { name: string, fields: [ { type: 'text'|'email'|'textarea', label: string, name: string, required?: bool } ] }
+ * Expected payload: { name: string, fields: [ { type: 'text'|'email'|'textarea', label: string, name: string, required?: bool, showIf?: { field: string, operator: string, value: string } } ], actions?: { email?: { to: string, subject?: string, template?: string } } }
  */
 function mt_forms_create(WP_REST_Request $request) {
     $data = $request->get_json_params();
@@ -315,6 +315,7 @@ function mt_forms_create(WP_REST_Request $request) {
     }
     $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
     $fields = isset($data['fields']) && is_array($data['fields']) ? $data['fields'] : array();
+    $actions = isset($data['actions']) && is_array($data['actions']) ? $data['actions'] : array();
     if ($name === '') {
         return new WP_REST_Response(array('success' => false, 'error' => 'Name is required'), 400);
     }
@@ -326,13 +327,38 @@ function mt_forms_create(WP_REST_Request $request) {
         $label = isset($f['label']) ? sanitize_text_field($f['label']) : '';
         $fname = isset($f['name']) ? sanitize_key($f['name']) : '';
         $required = !empty($f['required']);
+        // optional condition
+        $showIf = null;
+        if (isset($f['showIf']) && is_array($f['showIf'])) {
+            $sf = $f['showIf'];
+            $sfField = isset($sf['field']) ? sanitize_key($sf['field']) : '';
+            $sfOp = isset($sf['operator']) ? sanitize_text_field($sf['operator']) : '';
+            $sfVal = isset($sf['value']) ? sanitize_text_field($sf['value']) : '';
+            if ($sfField !== '' && $sfOp !== '') {
+                $showIf = array('field' => $sfField, 'operator' => $sfOp, 'value' => $sfVal);
+            }
+        }
         if ($label === '' || $fname === '') { continue; }
-        $sanitized_fields[] = array(
+        $row = array(
             'type' => $type,
             'label' => $label,
             'name' => $fname,
             'required' => (bool)$required,
         );
+        if (!is_null($showIf)) { $row['showIf'] = $showIf; }
+        $sanitized_fields[] = $row;
+    }
+
+    // actions.email
+    $emailAction = null;
+    if (isset($actions['email']) && is_array($actions['email'])) {
+        $em = $actions['email'];
+        $to = isset($em['to']) ? sanitize_text_field($em['to']) : '';
+        $subject = isset($em['subject']) ? sanitize_text_field($em['subject']) : '';
+        $template = isset($em['template']) ? wp_kses_post($em['template']) : '';
+        if ($to !== '') {
+            $emailAction = array('to' => $to, 'subject' => $subject, 'template' => $template);
+        }
     }
 
     $forms = mt_load_forms_store();
@@ -342,6 +368,7 @@ function mt_forms_create(WP_REST_Request $request) {
         'name' => $name,
         'fields' => $sanitized_fields,
     );
+    if (!is_null($emailAction)) { $newForm['actions'] = array('email' => $emailAction); }
     $forms[] = $newForm;
     mt_save_forms_store($forms);
 
