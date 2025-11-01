@@ -11,6 +11,7 @@ import { CPTUIComponent } from "./components/CPTUIComponent";
 import { UpdatesManagerComponent } from "./components/UpdatesManagerComponent";
 import { MaintenanceModeComponent } from "./components/MaintenanceModeComponent";
 import { CodeSnippetsComponent } from "./components/CodeSnippetsComponent";
+import { FormsComponent } from "./components/FormsComponent";
 import { AppShell, useSidebarCollapsed } from "./components/layout/AppShell";
 import { AppHeader } from "./components/layout/AppHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
@@ -41,6 +42,7 @@ function MainTreeApp() {
         { label: 'Updates', link: 'updates', component: <UpdatesManagerComponent /> },
         { label: 'Maintenance', link: 'maintenance', component: <MaintenanceModeComponent /> },
         { label: 'Snippets', link: 'snippets', component: <CodeSnippetsComponent /> },
+        { label: 'Forms', link: 'forms', component: <FormsComponent /> },
         { label: 'About', link: 'about', component: <AboutComponent /> },
     ]), []);
 

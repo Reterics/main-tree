@@ -8,6 +8,7 @@ import {
   MaintenanceIcon,
   SnippetIcon,
   InfoIcon,
+  FormsIcon,
 } from '../common/Icons';
 
 const iconFor = (link: string) => {
@@ -25,6 +26,8 @@ const iconFor = (link: string) => {
       return MaintenanceIcon;
     case 'snippets':
       return SnippetIcon;
+    case 'forms':
+      return FormsIcon;
     case 'about':
       return InfoIcon;
     default:

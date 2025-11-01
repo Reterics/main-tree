@@ -1,5 +1,6 @@
 import React from 'react';
 import logo from '../../../images/logo.svg';
+import { SearchIcon, ClearCacheIcon, SaveIcon } from '../common/Icons';
 
 type Props = {
   onSave?: () => void;
@@ -21,18 +22,39 @@ export const AppHeader: React.FC<Props> = ({ onSave, onSearch, onClearCache, mai
       </div>
 
       <div className="flex items-center gap-2">
-        <button type="button" onClick={onSearch} className="inline-flex items-center px-2.5 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50">
-          Search
+        <button
+          type="button"
+          onClick={onSearch}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          aria-label="Search"
+          title="Search"
+        >
+          <SearchIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">Search</span>
         </button>
-        <button type="button" onClick={onClearCache} className="inline-flex items-center px-2.5 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50">
-          Clear Cache
+        <button
+          type="button"
+          onClick={onClearCache}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          aria-label="Clear cache"
+          title="Clear cache"
+        >
+          <ClearCacheIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">Clear Cache</span>
         </button>
-        <button type="button" onClick={onSave} className="inline-flex items-center px-2.5 py-1.5 rounded bg-[var(--primary)] text-white text-xs font-medium hover:opacity-90">
-          Save
+        <button
+          type="button"
+          onClick={onSave}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[var(--primary)] text-white text-xs font-medium hover:opacity-90"
+          aria-label="Save"
+          title="Save"
+        >
+          <SaveIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">Save</span>
         </button>
-        <label className="inline-flex items-center gap-1 text-xs text-gray-700 ml-2">
+        <label className="inline-flex items-center gap-1.5 text-xs text-gray-700 ml-2">
           <input type="checkbox" checked={!!maintenanceOn} onChange={onToggleMaintenance} className="mr-1" />
-          Maintenance
+          <span className="hidden sm:inline">Maintenance</span>
         </label>
       </div>
     </div>
