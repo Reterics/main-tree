@@ -9,6 +9,7 @@ import {
   SnippetIcon,
   InfoIcon,
   FormsIcon,
+  NewsletterIcon,
 } from '../common/Icons';
 
 const iconFor = (link: string) => {
@@ -28,6 +29,8 @@ const iconFor = (link: string) => {
       return SnippetIcon;
     case 'forms':
       return FormsIcon;
+    case 'newsletters':
+      return NewsletterIcon;
     case 'about':
       return InfoIcon;
     default:
@@ -62,7 +65,7 @@ export const SidebarNav: React.FC<Props> = ({ menuOptions, page, setPage, collap
         <ul className="space-y-0">
           {menuOptions.map(opt => {
             const Icon = iconFor(opt.link);
-            const active = page === opt.link;
+            const active = page === opt.link || page.startsWith(opt.link + '/');
             return (
               <li key={opt.link}>
                 <button

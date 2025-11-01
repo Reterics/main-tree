@@ -12,6 +12,7 @@ import { UpdatesManagerComponent } from "./components/UpdatesManagerComponent";
 import { MaintenanceModeComponent } from "./components/MaintenanceModeComponent";
 import { CodeSnippetsComponent } from "./components/CodeSnippetsComponent";
 import { FormsComponent } from "./components/FormsComponent";
+import { NewslettersComponent } from "./components/NewslettersComponent";
 import { AppShell, useSidebarCollapsed } from "./components/layout/AppShell";
 import { AppHeader } from "./components/layout/AppHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
@@ -43,6 +44,7 @@ function MainTreeApp() {
         { label: 'Maintenance', link: 'maintenance', component: <MaintenanceModeComponent /> },
         { label: 'Snippets', link: 'snippets', component: <CodeSnippetsComponent /> },
         { label: 'Forms', link: 'forms', component: <FormsComponent /> },
+        { label: 'Newsletters', link: 'newsletters', component: <NewslettersComponent /> },
         { label: 'About', link: 'about', component: <AboutComponent /> },
     ]), []);
 

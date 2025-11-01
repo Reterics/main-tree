@@ -17,6 +17,7 @@ import {
   FaTrashCan,
   FaPlus,
   FaXmark,
+  FaEnvelope,
 } from 'react-icons/fa6';
 
 // Each icon component accepts an optional `className` so size/color can be controlled
@@ -52,6 +53,10 @@ export const InfoIcon: React.FC<{ className?: string }> = ({ className = '' }) =
 
 export const FormsIcon: React.FC<{ className?: string }> = ({ className = '' }) => (
   <FaWpforms className={className} aria-hidden="true" />
+);
+
+export const NewsletterIcon: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <FaEnvelope className={className} aria-hidden="true" />
 );
 
 // Action/utility icons for buttons

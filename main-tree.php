@@ -24,6 +24,16 @@ define( "MAIN_TREE_PLUGIN_DIR", plugin_dir_path( __FILE__ ) );
 // Forms storage option
 const MAIN_TREE_FORMS_OPTION = 'mt_forms_store';
 
+// Email Templates CPT constants
+const MT_EMAIL_TEMPLATE_CPT = 'mt_email_template';
+const MT_EMAIL_TEMPLATE_META = [
+    'subject', 'preheader', 'from_name', 'from_email', 'reply_to',
+    'source_type', // 'elementor' | 'html'
+    'elementor_template_id',
+    'html',
+    'updated_at'
+];
+
 /**
  * Helper: Read a WordPress option that stores a list as JSON or array and normalize to array.
  */
@@ -120,7 +130,8 @@ add_action('admin_enqueue_scripts', function($hook): void {
                 json_encode([
                     'restUrl' => esc_url_raw(rest_url(MAIN_TREE_API)),
                     'nonce'   => wp_create_nonce('wp_rest'),
-                    'public' => false
+                    'public' => false,
+                    'adminUrl' => esc_url_raw(admin_url('/'))
                 ])
             );
 
@@ -129,7 +140,73 @@ add_action('admin_enqueue_scripts', function($hook): void {
 
 
 // Register REST API endpoint
+// Register Email Template CPT
+add_action('init', function() {
+    $labels = array(
+        'name' => __( 'Email Templates', MAIN_TREE ),
+        'singular_name' => __( 'Email Template', MAIN_TREE ),
+    );
+    register_post_type(MT_EMAIL_TEMPLATE_CPT, array(
+        'labels' => $labels,
+        'public' => false,
+        'show_ui' => false,
+        'show_in_menu' => false,
+        'supports' => array('title','editor'), // editor stores raw html when source_type=html
+        'capability_type' => 'post',
+        'map_meta_cap' => true,
+    ));
+});
+
 add_action('rest_api_init', function () {
+    // EMAIL TEMPLATES endpoints
+    register_rest_route(MAIN_TREE_API, '/email-templates', array(
+        'methods' => 'GET',
+        'callback' => 'mt_email_templates_list',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    register_rest_route(MAIN_TREE_API, '/email-templates', array(
+        'methods' => 'POST',
+        'callback' => 'mt_email_templates_create',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    register_rest_route(MAIN_TREE_API, '/email-templates/(?P<id>\d+)', array(
+        'methods' => 'GET',
+        'callback' => 'mt_email_templates_get',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    register_rest_route(MAIN_TREE_API, '/email-templates/(?P<id>\d+)', array(
+        'methods' => 'PUT',
+        'callback' => 'mt_email_templates_update',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    register_rest_route(MAIN_TREE_API, '/email-templates/(?P<id>\d+)', array(
+        'methods' => 'DELETE',
+        'callback' => 'mt_email_templates_delete',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    register_rest_route(MAIN_TREE_API, '/email-templates/(?P<id>\d+)/duplicate', array(
+        'methods' => 'POST',
+        'callback' => 'mt_email_templates_duplicate',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    // Render email template (HTML or Elementor) to HTML for preview/sending
+    register_rest_route(MAIN_TREE_API, '/email-templates/(?P<id>\d+)/render', array(
+        'methods' => 'GET',
+        'callback' => 'mt_email_templates_render',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    // Elementor templates list
+    register_rest_route(MAIN_TREE_API, '/elementor-templates', array(
+        'methods' => 'GET',
+        'callback' => 'mt_elementor_templates_list',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+    // Elementor template create
+    register_rest_route(MAIN_TREE_API, '/elementor-templates', array(
+        'methods' => 'POST',
+        'callback' => 'mt_elementor_template_create',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
     // Create/Update multiple settings
     register_rest_route(MAIN_TREE_API, '/settings', array(
         'methods' => 'POST',
@@ -524,3 +601,515 @@ function mt_shortcode_form($atts = array()) {
     return ob_get_clean();
 }
 add_shortcode('mt_form', 'mt_shortcode_form');
+
+
+// -------------------- EMAIL TEMPLATES BACKEND (CPT) --------------------
+
+function mt_email_template_sanitize_payload($data) {
+    if (!is_array($data)) return new WP_Error('invalid', 'Invalid JSON payload');
+    $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
+    $source_type = isset($data['source_type']) ? sanitize_text_field($data['source_type']) : 'html';
+    if (!in_array($source_type, array('html','elementor'), true)) $source_type = 'html';
+    $subject = isset($data['subject']) ? sanitize_text_field($data['subject']) : '';
+    $preheader = isset($data['preheader']) ? sanitize_text_field($data['preheader']) : '';
+    $from_name = isset($data['from_name']) ? sanitize_text_field($data['from_name']) : '';
+    $from_email = isset($data['from_email']) ? sanitize_email($data['from_email']) : '';
+    $reply_to = isset($data['reply_to']) ? sanitize_email($data['reply_to']) : '';
+    $elementor_template_id = isset($data['elementor_template_id']) ? intval($data['elementor_template_id']) : 0;
+    $html = isset($data['html']) ? wp_kses_post($data['html']) : '';
+
+    return array(
+        'name' => $name,
+        'source_type' => $source_type,
+        'subject' => $subject,
+        'preheader' => $preheader,
+        'from_name' => $from_name,
+        'from_email' => $from_email,
+        'reply_to' => $reply_to,
+        'elementor_template_id' => $elementor_template_id,
+        'html' => $html,
+    );
+}
+
+function mt_email_template_to_array($post) {
+    if (!$post) return null;
+    $id = intval($post->ID);
+    $meta = array();
+    foreach (MT_EMAIL_TEMPLATE_META as $k) {
+        $meta[$k] = get_post_meta($id, $k, true);
+    }
+    // Backward compatibility: also pull editor content as html if set
+    $content = $post->post_content;
+
+    return array(
+        'id' => $id,
+        'name' => get_the_title($post),
+        'source_type' => isset($meta['source_type']) && $meta['source_type'] ? $meta['source_type'] : 'html',
+        'subject' => isset($meta['subject']) ? $meta['subject'] : '',
+        'preheader' => isset($meta['preheader']) ? $meta['preheader'] : '',
+        'from_name' => isset($meta['from_name']) ? $meta['from_name'] : '',
+        'from_email' => isset($meta['from_email']) ? $meta['from_email'] : '',
+        'reply_to' => isset($meta['reply_to']) ? $meta['reply_to'] : '',
+        'elementor_template_id' => intval(isset($meta['elementor_template_id']) ? $meta['elementor_template_id'] : 0),
+        'html' => isset($meta['html']) && $meta['html'] !== '' ? $meta['html'] : $content,
+        'updated_at' => isset($meta['updated_at']) ? $meta['updated_at'] : '',
+    );
+}
+
+function mt_email_templates_list(WP_REST_Request $request) {
+    $q = new WP_Query(array(
+        'post_type' => MT_EMAIL_TEMPLATE_CPT,
+        'post_status' => array('publish','draft','pending'),
+        'posts_per_page' => 200,
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'no_found_rows' => true,
+    ));
+    $items = array();
+    foreach ($q->posts as $p) { $items[] = mt_email_template_to_array($p); }
+    return new WP_REST_Response($items, 200);
+}
+
+function mt_email_templates_create(WP_REST_Request $request) {
+    $data = mt_email_template_sanitize_payload($request->get_json_params());
+    if (is_wp_error($data)) return new WP_REST_Response(array('success'=>false,'error'=>'Invalid payload'), 400);
+    if ($data['name'] === '') return new WP_REST_Response(array('success'=>false,'error'=>'Name is required'), 400);
+
+    $content = $data['source_type'] === 'html' ? $data['html'] : '';
+    $post_id = wp_insert_post(array(
+        'post_type' => MT_EMAIL_TEMPLATE_CPT,
+        'post_status' => 'publish',
+        'post_title' => $data['name'],
+        'post_content' => $content,
+    ), true);
+    if (is_wp_error($post_id)) return new WP_REST_Response(array('success'=>false,'error'=>$post_id->get_error_message()), 500);
+
+    foreach (MT_EMAIL_TEMPLATE_META as $key) {
+        if ($key === 'updated_at') continue;
+        $val = isset($data[$key]) ? $data[$key] : '';
+        update_post_meta($post_id, $key, $val);
+    }
+    update_post_meta($post_id, 'updated_at', current_time('mysql'));
+
+    $post = get_post($post_id);
+    return new WP_REST_Response(array('success'=>true,'template'=>mt_email_template_to_array($post)), 201);
+}
+
+function mt_email_templates_get(WP_REST_Request $request) {
+    $id = intval($request->get_param('id'));
+    $post = get_post($id);
+    if (!$post || $post->post_type !== MT_EMAIL_TEMPLATE_CPT) return new WP_REST_Response(array('success'=>false,'error'=>'Not found'), 404);
+    return new WP_REST_Response(array('success'=>true,'template'=>mt_email_template_to_array($post)), 200);
+}
+
+function mt_email_templates_update(WP_REST_Request $request) {
+    $id = intval($request->get_param('id'));
+    $post = get_post($id);
+    if (!$post || $post->post_type !== MT_EMAIL_TEMPLATE_CPT) return new WP_REST_Response(array('success'=>false,'error'=>'Not found'), 404);
+
+    $data = mt_email_template_sanitize_payload($request->get_json_params());
+    if (is_wp_error($data)) return new WP_REST_Response(array('success'=>false,'error'=>'Invalid payload'), 400);
+    if ($data['name'] === '') return new WP_REST_Response(array('success'=>false,'error'=>'Name is required'), 400);
+
+    $content = $data['source_type'] === 'html' ? $data['html'] : $post->post_content;
+    $res = wp_update_post(array(
+        'ID' => $id,
+        'post_title' => $data['name'],
+        'post_content' => $content,
+    ), true);
+    if (is_wp_error($res)) return new WP_REST_Response(array('success'=>false,'error'=>$res->get_error_message()), 500);
+
+    foreach (MT_EMAIL_TEMPLATE_META as $key) {
+        if ($key === 'updated_at') continue;
+        $val = isset($data[$key]) ? $data[$key] : '';
+        update_post_meta($id, $key, $val);
+    }
+    update_post_meta($id, 'updated_at', current_time('mysql'));
+
+    return new WP_REST_Response(array('success'=>true,'template'=>mt_email_template_to_array(get_post($id))), 200);
+}
+
+function mt_email_templates_delete(WP_REST_Request $request) {
+    $id = intval($request->get_param('id'));
+    $post = get_post($id);
+    if (!$post || $post->post_type !== MT_EMAIL_TEMPLATE_CPT) return new WP_REST_Response(array('success'=>false,'error'=>'Not found'), 404);
+    wp_delete_post($id, true);
+    return new WP_REST_Response(array('success'=>true), 200);
+}
+
+function mt_email_templates_duplicate(WP_REST_Request $request) {
+    $id = intval($request->get_param('id'));
+    $post = get_post($id);
+    if (!$post || $post->post_type !== MT_EMAIL_TEMPLATE_CPT) return new WP_REST_Response(array('success'=>false,'error'=>'Not found'), 404);
+    $tpl = mt_email_template_to_array($post);
+    $new_title = $tpl['name'] . ' (Copy)';
+    $new_content = $tpl['source_type'] === 'html' ? $tpl['html'] : '';
+    $new_id = wp_insert_post(array(
+        'post_type' => MT_EMAIL_TEMPLATE_CPT,
+        'post_status' => 'draft',
+        'post_title' => $new_title,
+        'post_content' => $new_content,
+    ), true);
+    if (is_wp_error($new_id)) return new WP_REST_Response(array('success'=>false,'error'=>$new_id->get_error_message()), 500);
+    foreach (MT_EMAIL_TEMPLATE_META as $key) {
+        if ($key === 'updated_at') continue;
+        update_post_meta($new_id, $key, get_post_meta($id, $key, true));
+    }
+    update_post_meta($new_id, 'updated_at', current_time('mysql'));
+    return new WP_REST_Response(array('success'=>true,'template'=>mt_email_template_to_array(get_post($new_id))), 201);
+}
+
+function mt_set_current_email_template_id($id) { $GLOBALS['mt_current_email_template_id'] = intval($id); }
+function mt_get_current_email_template_id() {
+    if (isset($GLOBALS['mt_current_email_template_id'])) {
+        return intval($GLOBALS['mt_current_email_template_id']);
+    }
+    // Try to resolve automatically in Elementor editor context or via explicit param
+    $id = 0;
+    if (isset($_GET['mt_email_template_id'])) {
+        $id = intval($_GET['mt_email_template_id']);
+    }
+    if (!$id && isset($_GET['action']) && $_GET['action'] === 'elementor' && isset($_GET['post'])) {
+        $el_id = intval($_GET['post']);
+        // Find email template that references this Elementor template
+        $found = get_posts(array(
+            'post_type' => MT_EMAIL_TEMPLATE_CPT,
+            'post_status' => array('publish','draft','pending'),
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'meta_query' => array(
+                array(
+                    'key' => 'elementor_template_id',
+                    'value' => $el_id,
+                    'compare' => '=',
+                    'type' => 'NUMERIC',
+                ),
+            ),
+            'no_found_rows' => true,
+            'suppress_filters' => true,
+        ));
+        if (!empty($found)) { $id = intval($found[0]); }
+    }
+    if ($id) { $GLOBALS['mt_current_email_template_id'] = $id; return $id; }
+    return 0;
+}
+
+// Shortcodes for dynamic email fields
+if (!shortcode_exists('mt_email_subject')) {
+    add_shortcode('mt_email_subject', function() { return esc_html((string)get_post_meta(mt_get_current_email_template_id(), 'subject', true)); });
+}
+if (!shortcode_exists('mt_email_preheader')) {
+    add_shortcode('mt_email_preheader', function() { return esc_html((string)get_post_meta(mt_get_current_email_template_id(), 'preheader', true)); });
+}
+if (!shortcode_exists('mt_email_from_name')) {
+    add_shortcode('mt_email_from_name', function() { return esc_html((string)get_post_meta(mt_get_current_email_template_id(), 'from_name', true)); });
+}
+if (!shortcode_exists('mt_email_from_email')) {
+    add_shortcode('mt_email_from_email', function() { return esc_html((string)get_post_meta(mt_get_current_email_template_id(), 'from_email', true)); });
+}
+if (!shortcode_exists('mt_email_reply_to')) {
+    add_shortcode('mt_email_reply_to', function() { return esc_html((string)get_post_meta(mt_get_current_email_template_id(), 'reply_to', true)); });
+}
+if (!shortcode_exists('mt_email_var')) {
+    add_shortcode('mt_email_var', function($atts) {
+        $atts = shortcode_atts(array('key' => ''), $atts, 'mt_email_var');
+        $key = sanitize_key($atts['key']);
+        if (!$key) return '';
+        return esc_html((string)get_post_meta(mt_get_current_email_template_id(), $key, true));
+    });
+}
+
+function mt_email_templates_render(WP_REST_Request $request) {
+    $id = intval($request->get_param('id'));
+    $post = get_post($id);
+    if (!$post || $post->post_type !== MT_EMAIL_TEMPLATE_CPT) {
+        return new WP_REST_Response(array('success'=>false,'error'=>'Not found'), 404);
+    }
+
+    mt_set_current_email_template_id($id);
+    try {
+        $source_type = get_post_meta($id, 'source_type', true);
+
+        if ($source_type === 'elementor') {
+            $tpl_id = intval(get_post_meta($id, 'elementor_template_id', true));
+            if ($tpl_id > 0 && post_type_exists('elementor_library') && class_exists('Elementor\\Plugin')) {
+                try {
+                    $html = \Elementor\Plugin::instance()->frontend->get_builder_content_for_display($tpl_id, true);
+                    // Process our shortcodes but avoid theme/content filters that may inject headers/meta
+                    $html = do_shortcode($html);
+                    return new WP_REST_Response(array('success'=>true,'html'=>$html), 200);
+                } catch (Exception $e) {
+                    return new WP_REST_Response(array('success'=>false,'error'=>'Failed to render Elementor template'), 500);
+                }
+            }
+            return new WP_REST_Response(array('success'=>false,'error'=>'Elementor template not available'), 400);
+        }
+
+        // Fallback to saved HTML
+        $raw = (string) get_post_meta($id, 'html', true);
+        if ($raw === '') {
+            $raw = (string) $post->post_content;
+        }
+        $raw = do_shortcode($raw);
+        // Do not run 'the_content' filters to avoid theme headers/meta injection
+        return new WP_REST_Response(array('success'=>true,'html'=>$raw), 200);
+    } finally {
+        unset($GLOBALS['mt_current_email_template_id']);
+    }
+}
+
+function mt_elementor_templates_list(WP_REST_Request $request) {
+    // Elementor stores templates in 'elementor_library' post type
+    $exists = post_type_exists('elementor_library');
+    if (!$exists) return new WP_REST_Response(array(), 200);
+    $q = new WP_Query(array(
+        'post_type' => 'elementor_library',
+        'post_status' => array('publish','draft','pending'),
+        'posts_per_page' => 200,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'no_found_rows' => true,
+        'fields' => 'ids',
+    ));
+    $out = array();
+    foreach ($q->posts as $pid) {
+        $out[] = array(
+            'id' => intval($pid),
+            'title' => get_the_title($pid),
+        );
+    }
+    return new WP_REST_Response($out, 200);
+}
+
+function mt_elementor_template_create(WP_REST_Request $request) {
+    if (!post_type_exists('elementor_library')) {
+        return new WP_REST_Response(array('success'=>false,'error'=>'Elementor not active'), 400);
+    }
+    $params = $request->get_json_params();
+    $title = '';
+    if (is_array($params) && isset($params['title'])) {
+        $title = sanitize_text_field((string)$params['title']);
+    }
+    if ($title === '') { $title = 'Email Template'; }
+
+    $post_id = wp_insert_post(array(
+        'post_type'   => 'elementor_library',
+        'post_status' => 'draft',
+        'post_title'  => $title,
+    ), true);
+    if (is_wp_error($post_id)) {
+        return new WP_REST_Response(array('success'=>false,'error'=>$post_id->get_error_message()), 500);
+    }
+
+    // Seed Elementor starter layout for email
+    $make_id = function() { return uniqid('mt_', true); };
+    $seed = array(
+        array(
+            'id' => $make_id(),
+            'elType' => 'section',
+            'isInner' => false,
+            'settings' => array(
+                'content_width' => 'boxed',
+                'boxed_width' => array('unit' => 'px', 'size' => 600),
+                'gap' => 'no',
+                'padding' => array('unit' => 'px', 'top' => 20, 'right' => 20, 'bottom' => 20, 'left' => 20, 'isLinked' => false),
+                'background_color' => '#ffffff',
+            ),
+            'elements' => array(
+                array(
+                    'id' => $make_id(),
+                    'elType' => 'column',
+                    'isInner' => false,
+                    'settings' => array(
+                        'padding' => array('unit'=>'px','top'=>0,'right'=>0,'bottom'=>0,'left'=>0,'isLinked'=>false)
+                    ),
+                    'elements' => array(
+                        array(
+                            'id' => $make_id(),
+                            'elType' => 'widget',
+                            'widgetType' => 'text-editor',
+                            'settings' => array(
+                                'editor' => '<p style="font-size:12px; color:#6B7280; margin:0;">[mt_email_preheader]</p>'
+                            ),
+                            'elements' => array(),
+                            'isInner' => false,
+                        ),
+                        array(
+                            'id' => $make_id(),
+                            'elType' => 'widget',
+                            'widgetType' => 'heading',
+                            'settings' => array(
+                                'title' => '[mt_email_subject]',
+                                'header_size' => 'h2',
+                                'align' => 'left',
+                            ),
+                            'elements' => array(),
+                            'isInner' => false,
+                        ),
+                        array(
+                            'id' => $make_id(),
+                            'elType' => 'widget',
+                            'widgetType' => 'text-editor',
+                            'settings' => array(
+                                'editor' => '<p>Hi there,</p><p>This is your email body. Replace with your content.</p>'
+                            ),
+                            'elements' => array(),
+                            'isInner' => false,
+                        ),
+                        array(
+                            'id' => $make_id(),
+                            'elType' => 'widget',
+                            'widgetType' => 'button',
+                            'settings' => array(
+                                'text' => 'Call to Action',
+                                'link' => array('url' => '#'),
+                                'align' => 'left',
+                            ),
+                            'elements' => array(),
+                            'isInner' => false,
+                        ),
+                        array(
+                            'id' => $make_id(),
+                            'elType' => 'widget',
+                            'widgetType' => 'text-editor',
+                            'settings' => array(
+                                'editor' => '<p style="font-size:12px; color:#6B7280; margin-top:24px;">From: [mt_email_from_name] &lt;[mt_email_from_email]&gt;<br/>Reply-To: [mt_email_reply_to]</p>'
+                            ),
+                            'elements' => array(),
+                            'isInner' => false,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    );
+
+    /** Allow sites to override the seeded layout */
+    if (function_exists('apply_filters')) {
+        $seed = apply_filters('mt/elementor_email_seed', $seed, $post_id);
+    }
+
+    // Save Elementor meta so it opens in the builder with the starter
+    update_post_meta($post_id, '_elementor_edit_mode', 'builder');
+    if (defined('ELEMENTOR_VERSION')) {
+        update_post_meta($post_id, '_elementor_version', ELEMENTOR_VERSION);
+    }
+    update_post_meta($post_id, '_elementor_template_type', 'page');
+    update_post_meta($post_id, '_elementor_data', wp_slash( wp_json_encode( $seed ) ));
+    // Use Elementor Canvas to avoid theme header/footer in editor preview
+    $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
+    if (!is_array($page_settings)) { $page_settings = array(); }
+    $page_settings['template'] = 'elementor_canvas';
+    update_post_meta($post_id, '_elementor_page_settings', $page_settings);
+
+    $edit_url = add_query_arg(array(
+        'post' => intval($post_id),
+        'action' => 'elementor',
+    ), admin_url('post.php'));
+
+    return new WP_REST_Response(array(
+        'success' => true,
+        'template' => array(
+            'id' => intval($post_id),
+            'title' => get_the_title($post_id),
+            'edit_url' => esc_url_raw($edit_url),
+        )
+    ), 201);
+}
+
+// Elementor: Register category and Email Field widget
+add_action('elementor/elements/categories_registered', function($elements_manager) {
+    if (!is_object($elements_manager) || !method_exists($elements_manager, 'add_category')) return;
+    $elements_manager->add_category('main-tree-email', array(
+        'title' => __('Main Tree Email', 'main-tree'),
+        'icon'  => 'fa fa-envelope',
+    ));
+});
+
+add_action('elementor/widgets/register', function($widgets_manager) {
+    if (!class_exists('Elementor\\Widget_Base')) return;
+
+    if (!class_exists('MT_Email_Field_Widget')) {
+        class MT_Email_Field_Widget extends \Elementor\Widget_Base {
+            public function get_name() { return 'mt_email_field'; }
+            public function get_title() { return __('Email Field', 'main-tree'); }
+            public function get_icon() { return 'eicon-editor-code'; }
+            public function get_categories() { return array('main-tree-email'); }
+
+            protected function register_controls() {
+                $this->start_controls_section('section_content', [ 'label' => __('Content', 'main-tree') ]);
+                $this->add_control('field', [
+                    'label' => __('Field', 'main-tree'),
+                    'type' => \Elementor\Controls_Manager::SELECT,
+                    'options' => [
+                        'subject' => __('Subject', 'main-tree'),
+                        'preheader' => __('Preheader', 'main-tree'),
+                        'from_name' => __('From name', 'main-tree'),
+                        'from_email' => __('From email', 'main-tree'),
+                        'reply_to' => __('Reply-To', 'main-tree'),
+                        'custom' => __('Custom meta key', 'main-tree'),
+                    ],
+                    'default' => 'preheader',
+                ]);
+                $this->add_control('key', [
+                    'label' => __('Custom key', 'main-tree'),
+                    'type' => \Elementor\Controls_Manager::TEXT,
+                    'condition' => [ 'field' => 'custom' ],
+                ]);
+                $this->end_controls_section();
+            }
+
+            protected function render() {
+                $settings = $this->get_settings_for_display();
+                $field = isset($settings['field']) ? $settings['field'] : 'preheader';
+                if ($field === 'custom') {
+                    $key = isset($settings['key']) ? sanitize_key($settings['key']) : '';
+                    echo do_shortcode('[mt_email_var key="' . esc_attr($key) . '"]');
+                    return;
+                }
+                echo do_shortcode('[mt_email_' . esc_attr($field) . ']');
+            }
+        }
+    }
+
+    if (method_exists($widgets_manager, 'register')) {
+        $widgets_manager->register(new MT_Email_Field_Widget());
+    } elseif (method_exists($widgets_manager, 'register_widget_type')) {
+        $widgets_manager->register_widget_type(new MT_Email_Field_Widget());
+    }
+});
+
+// Elementor Editor: enqueue Email Fields insertion UI for Text Editor
+add_action('elementor/editor/after_enqueue_scripts', function() {
+    // Build options list of tokens to insert as plain text
+    $options = array(
+        array('text' => __('Name', 'main-tree'),        'value' => '[mt_email_var key="name"]'),
+        array('text' => __('Subject', 'main-tree'),     'value' => '[mt_email_subject]'),
+        array('text' => __('Preheader', 'main-tree'),   'value' => '[mt_email_preheader]'),
+        array('text' => __('From name', 'main-tree'),   'value' => '[mt_email_from_name]'),
+        array('text' => __('From email', 'main-tree'),  'value' => '[mt_email_from_email]'),
+        array('text' => __('Reply-To', 'main-tree'),    'value' => '[mt_email_reply_to]'),
+    );
+    if (function_exists('apply_filters')) {
+        $options = apply_filters('mt/email_editor_tokens', $options);
+    }
+
+    // Enqueue the small editor script and pass options
+    wp_enqueue_script(
+        'mt-email-editor',
+        plugins_url('assets/public/mt-tinymce-email.js', __FILE__),
+        array('jquery'),
+        '1.1.0',
+        true
+    );
+    // Editor-only CSS for better panel fit
+    wp_enqueue_style(
+        'mt-email-editor',
+        plugins_url('assets/public/mt-tinymce-email.css', __FILE__),
+        array(),
+        '1.1.0'
+    );
+
+    $inline = 'window.mtEmailFieldsOptions = ' . wp_json_encode($options) . ';';
+    wp_add_inline_script('mt-email-editor', $inline, 'before');
+});
