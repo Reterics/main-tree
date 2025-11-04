@@ -711,6 +711,13 @@ function mt_email_templates_update(WP_REST_Request $request) {
     if (is_wp_error($data)) return new WP_REST_Response(array('success'=>false,'error'=>'Invalid payload'), 400);
     if ($data['name'] === '') return new WP_REST_Response(array('success'=>false,'error'=>'Name is required'), 400);
 
+    // Prevent switching source type after creation (no interchangeable)
+    $existing_source = get_post_meta($id, 'source_type', true);
+    if (!$existing_source) { $existing_source = 'html'; }
+    if ($existing_source && $data['source_type'] && $existing_source !== $data['source_type']) {
+        return new WP_REST_Response(array('success'=>false,'error'=>'Source type cannot be changed for this template'), 400);
+    }
+
     $content = $data['source_type'] === 'html' ? $data['html'] : $post->post_content;
     $res = wp_update_post(array(
         'ID' => $id,
