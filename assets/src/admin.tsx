@@ -21,6 +21,7 @@ function MainTreeApp() {
     const [page, setPage] = useState(location.hash.substring(1) || 'dashboard');
     const { collapsed, setCollapsed } = useSidebarCollapsed();
     const [maintenanceOn, setMaintenanceOn] = useState(false);
+    const { settings } = useSettings();
 
     useEffect(() => {
         const onHashChange = () => setPage(location.hash.substring(1) || 'dashboard');
@@ -35,18 +36,26 @@ function MainTreeApp() {
         }
     }, [page]);
 
-    const menuOptions: MenuOption[] = useMemo(() => ([
+    const allMenuOptions: MenuOption[] = useMemo(() => ([
         { label: 'Dashboard', link: 'dashboard', component: <DashboardComponent /> },
         { label: 'Settings', link: 'settings', component: <SettingsComponent /> },
-        { label: 'ACF', link: 'acf', component: <ACFToolsComponent /> },
-        { label: 'CPT UI', link: 'cptui', component: <CPTUIComponent /> },
-        { label: 'Updates', link: 'updates', component: <UpdatesManagerComponent /> },
-        { label: 'Maintenance', link: 'maintenance', component: <MaintenanceModeComponent /> },
-        { label: 'Snippets', link: 'snippets', component: <CodeSnippetsComponent /> },
+        { label: 'ACF', link: 'acf', component: <ACFToolsComponent />, devMenuKey: 'dev_menu_acf' },
+        { label: 'CPT UI', link: 'cptui', component: <CPTUIComponent />, devMenuKey: 'dev_menu_cptui' },
+        { label: 'Updates', link: 'updates', component: <UpdatesManagerComponent />, devMenuKey: 'dev_menu_updates' },
+        { label: 'Maintenance', link: 'maintenance', component: <MaintenanceModeComponent />, devMenuKey: 'dev_menu_maintenance' },
+        { label: 'Snippets', link: 'snippets', component: <CodeSnippetsComponent />, devMenuKey: 'dev_menu_snippets' },
         { label: 'Forms', link: 'forms', component: <FormsComponent /> },
         { label: 'Newsletters', link: 'newsletters', component: <NewslettersComponent /> },
         { label: 'About', link: 'about', component: <AboutComponent /> },
     ]), []);
+
+    // Filter menu options based on settings - only show dev menus if enabled
+    const menuOptions = useMemo(() => {
+        return allMenuOptions.filter(menu => {
+            if (!menu.devMenuKey) return true; // Always show non-dev menus
+            return settings[menu.devMenuKey] === '1'; // Only show dev menus if enabled
+        });
+    }, [allMenuOptions, settings]);
 
     // Support deep links like forms/new or forms/edit/:id by matching prefix
     const activeMenu = menuOptions.find(menu => page === menu.link || page.startsWith(menu.link + '/')) || menuOptions[0];

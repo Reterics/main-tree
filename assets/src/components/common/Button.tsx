@@ -1,13 +1,25 @@
 import React from 'react';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MT BUTTON COMPONENTS - Scoped, conflict-free
+   Uses mt-btn-* CSS classes defined in admin.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+type ButtonVariant = 'primary' | 'default' | 'ghost' | 'danger';
+type ButtonSize = 'sm' | 'md';
+
 type ButtonProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
   className?: string;
-  variant?: 'primary' | 'secondary';
-  size?: 'sm' | 'md';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: React.ReactNode;
+  iconOnly?: boolean;
+  'aria-label'?: string;
+  title?: string;
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,20 +28,83 @@ export const Button: React.FC<ButtonProps> = ({
   type = 'button',
   disabled = false,
   className = '',
-  variant = 'primary',
+  variant = 'default',
   size = 'md',
+  icon,
+  iconOnly = false,
+  'aria-label': ariaLabel,
+  title,
 }) => {
-  const base = 'inline-flex items-center rounded-md font-medium focus:outline-none focus:ring-2';
-  const sizeCls = size === 'sm' ? 'text-xs px-2.5 py-1.5' : 'text-sm px-4 py-2';
-  const primary = 'text-white bg-[var(--primary)] hover:opacity-90 focus:ring-[var(--primary)]';
-  const secondary = 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-300';
-  const variantCls = variant === 'primary' ? primary : secondary;
-  const disabledCls = disabled ? 'opacity-60 cursor-not-allowed' : '';
-  const classes = `${base} ${sizeCls} ${variantCls} ${disabledCls} ${className}`.trim();
+  const classes = [
+    'mt-btn',
+    `mt-btn-${variant}`,
+    size === 'sm' ? 'mt-btn-sm' : '',
+    className,
+  ].filter(Boolean).join(' ');
 
   return (
-    <button type={type} onClick={onClick} disabled={disabled} aria-disabled={disabled} className={classes}>
-      {children}
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
+      aria-label={ariaLabel}
+      title={title || ariaLabel}
+      className={classes}
+    >
+      {icon}
+      {!iconOnly && children}
     </button>
   );
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUTTON GROUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ButtonGroupProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const ButtonGroup: React.FC<ButtonGroupProps> = ({ children, className = '' }) => (
+  <div className={`mt-header-actions ${className}`.trim()}>{children}</div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ICON BUTTON (Convenience wrapper)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IconButtonProps {
+  icon: React.ReactNode;
+  onClick?: () => void;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  disabled?: boolean;
+  className?: string;
+  'aria-label': string;
+  title?: string;
+}
+
+export const IconButton: React.FC<IconButtonProps> = ({
+  icon,
+  onClick,
+  variant = 'ghost',
+  size = 'sm',
+  disabled = false,
+  className = '',
+  'aria-label': ariaLabel,
+  title,
+}) => (
+  <Button
+    onClick={onClick}
+    variant={variant}
+    size={size}
+    disabled={disabled}
+    className={className}
+    icon={icon}
+    iconOnly
+    aria-label={ariaLabel}
+    title={title || ariaLabel}
+  />
+);

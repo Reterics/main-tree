@@ -1,14 +1,32 @@
 import React from "react";
-import './SettingsComponent.css';
-import {useSettings} from "../context/SettingsContext";
+import { useSettings } from "../context/SettingsContext";
 import { Button } from "./common/Button";
+import { Card, CardHeader, CardBody, PageHeader, InlineField, Toggle, Input, FormField } from "./common/Form";
+import { SaveIcon } from "./common/Icons";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MT SETTINGS - Scoped, conflict-free
+   Uses mt-* CSS classes defined in admin.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Development menu configuration - defines which menus can be toggled */
+export const DEV_MENU_CONFIG = [
+    { key: 'dev_menu_acf', label: 'ACF', description: 'Advanced Custom Fields tools' },
+    { key: 'dev_menu_cptui', label: 'CPT UI', description: 'Custom Post Types & Taxonomies' },
+    { key: 'dev_menu_updates', label: 'Updates', description: 'Updates manager' },
+    { key: 'dev_menu_maintenance', label: 'Maintenance', description: 'Maintenance mode' },
+    { key: 'dev_menu_snippets', label: 'Snippets', description: 'Code snippets manager' },
+] as const;
 
 export const SettingsComponent = () => {
     const { settings, setField, saveAll, saving, saveResult, loading } = useSettings();
 
     const handleChange = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setField(key, value);
+        setField(key, e.target.value);
+    };
+
+    const handleToggle = (key: string) => (checked: boolean) => {
+        setField(key, checked ? '1' : '');
     };
 
     const handleSave = async () => {
@@ -16,33 +34,64 @@ export const SettingsComponent = () => {
     };
 
     return (
-        <div className="w-full">
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Settings</h3>
-                <p className="text-sm text-gray-600">Configure your integration preferences.</p>
-            </div>
+        <div style={{ maxWidth: 640 }}>
+            <PageHeader title="Settings" subtitle="Configure your integration preferences." />
 
-            <form onSubmit={(e)=>{e.preventDefault();}} className="max-w-3xl">
-                <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                        <label htmlFor='openai_api_key' className="sm:col-span-1 text-sm font-medium text-gray-700">OpenAI API Key</label>
-                        <div className="sm:col-span-3">
-                            <input id='openai_api_key' type='text' value={settings['openai_api_key'] || ''} onChange={handleChange('openai_api_key')}
-                                   className="w-full rounded-md border-gray-300 focus:border-[var(--primary)] focus:ring-[var(--primary)] text-sm disabled:bg-gray-50"
-                                   placeholder="sk-..." disabled={loading || saving} />
-                        </div>
-                    </div>
+            <form onSubmit={(e) => e.preventDefault()}>
+                {/* API Keys Section */}
+                <Card style={{ marginBottom: 12 }}>
+                    <CardHeader title="API Keys" subtitle="External service credentials" />
+                    <CardBody>
+                        <FormField label="OpenAI API Key">
+                            <Input
+                                type="password"
+                                value={settings['openai_api_key'] || ''}
+                                onChange={handleChange('openai_api_key')}
+                                placeholder="sk-..."
+                                disabled={loading || saving}
+                            />
+                        </FormField>
+                    </CardBody>
+                </Card>
 
-                    <div className="mt-6 flex items-center gap-3">
-                        <Button variant="primary" size="md" onClick={handleSave} disabled={saving}>
-                            {saving ? 'Saving…' : 'Save Changes'}
-                        </Button>
-                        {saveResult === 'ok' && <span className="text-sm text-green-600">Saved.</span>}
-                        {saveResult === 'fail' && <span className="text-sm text-red-600">Save failed.</span>}
-                        {loading && <span className="text-sm text-gray-500">Loading…</span>}
-                    </div>
+                {/* Development Menus Section */}
+                <Card style={{ marginBottom: 12 }}>
+                    <CardHeader title="Development Menus" subtitle="Enable or disable menus that are under development" />
+                    <CardBody>
+                        {DEV_MENU_CONFIG.map(({ key, label, description }) => (
+                            <InlineField key={key} label={label} description={description}>
+                                <Toggle
+                                    checked={settings[key] === '1'}
+                                    onChange={handleToggle(key)}
+                                    disabled={loading || saving}
+                                />
+                            </InlineField>
+                        ))}
+                    </CardBody>
+                </Card>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={saving || loading}
+                        icon={<SaveIcon />}
+                    >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    {saveResult === 'ok' && (
+                        <span style={{ fontSize: 11, color: 'var(--mt-success)' }}>Changes saved successfully.</span>
+                    )}
+                    {saveResult === 'fail' && (
+                        <span style={{ fontSize: 11, color: 'var(--mt-danger)' }}>Failed to save changes.</span>
+                    )}
+                    {loading && (
+                        <span style={{ fontSize: 11, color: 'var(--mt-text-muted)' }}>Loading...</span>
+                    )}
                 </div>
             </form>
         </div>
-    )
+    );
 }

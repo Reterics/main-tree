@@ -3,6 +3,8 @@ export interface MenuOption {
     link: string
     component: JSX.Element
     alignRight?: boolean
+    /** If set, this menu can be toggled via settings. The value is the settings key. */
+    devMenuKey?: string
 }
 
 export interface NavigationArguments {

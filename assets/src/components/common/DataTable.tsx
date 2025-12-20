@@ -1,4 +1,10 @@
 import React from 'react';
+import { Spinner } from './Form';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MT DATA TABLE - Scoped, conflict-free
+   Uses mt-table-* CSS classes defined in admin.css
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export type Column<T> = {
   key: string;
@@ -38,79 +44,82 @@ export function DataTable<T extends {}>({
   emptyMessage = 'No items to display.',
   error = null,
 }: DataTableProps<T>) {
-  const alignClass = (align?: 'left'|'center'|'right') => align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+  const alignStyle = (align?: 'left'|'center'|'right'): React.CSSProperties => ({
+    textAlign: align || 'left',
+  });
+
+  const getActionClass = (intent?: 'default' | 'primary' | 'danger') => {
+    if (intent === 'danger') return 'mt-btn mt-btn-danger mt-btn-sm';
+    if (intent === 'primary') return 'mt-btn mt-btn-primary mt-btn-sm';
+    return 'mt-btn mt-btn-ghost mt-btn-sm';
+  };
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50">
+    <div className="mt-card" style={{ overflow: 'hidden' }}>
+      <table className="mt-table">
+        <thead>
           <tr>
             {columns.map(col => (
-              <th
-                key={col.key}
-                className={`px-3 py-2 font-medium text-gray-700 ${alignClass(col.align)}`}
-                style={{ width: col.width }}
-                scope="col"
-              >
+              <th key={col.key} style={{ width: col.width, ...alignStyle(col.align) }} scope="col">
                 {col.header}
               </th>
             ))}
             {actions.length > 0 && (
-              <th className="px-3 py-2 font-medium text-gray-700 text-right" scope="col">Actions</th>
+              <th style={{ textAlign: 'right' }} scope="col">Actions</th>
             )}
           </tr>
         </thead>
         <tbody>
           {error && (
             <tr>
-              <td className="px-3 py-3 text-red-600" colSpan={columns.length + (actions.length ? 1 : 0)}>
+              <td colSpan={columns.length + (actions.length ? 1 : 0)} style={{ color: 'var(--mt-danger)' }}>
                 {error}
               </td>
             </tr>
           )}
           {loading && !error && (
             <tr>
-              <td className="px-3 py-3 text-gray-500" colSpan={columns.length + (actions.length ? 1 : 0)}>
-                Loading...
+              <td colSpan={columns.length + (actions.length ? 1 : 0)}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Spinner /> Loading...
+                </span>
               </td>
             </tr>
           )}
           {!loading && !error && data.length === 0 && (
             <tr>
-              <td className="px-3 py-3 text-gray-500" colSpan={columns.length + (actions.length ? 1 : 0)}>
+              <td
+                colSpan={columns.length + (actions.length ? 1 : 0)}
+                style={{ textAlign: 'center', padding: '16px 10px', color: 'var(--mt-text-muted)' }}
+              >
                 {emptyMessage}
               </td>
             </tr>
           )}
           {!loading && !error && data.map(row => (
-            <tr key={rowKey(row)} className="border-t border-gray-100 hover:bg-gray-50">
+            <tr key={rowKey(row)}>
               {columns.map(col => (
-                <td key={col.key} className={`px-3 py-2 align-middle ${alignClass(col.align)}`}>
+                <td key={col.key} style={alignStyle(col.align)}>
                   {col.render ? col.render(row) : (row as any)[col.key]}
                 </td>
               ))}
               {actions.length > 0 && (
-                <td className="px-3 py-2 text-right">
-                  <div className="inline-flex items-center gap-1">
+                <td>
+                  <div className="mt-table-actions">
                     {actions.map(action => {
                       const disabled = action.disabled ? action.disabled(row) : false;
-                      const base = action.intent === 'danger'
-                        ? 'text-red-600 hover:bg-red-50 border-red-300'
-                        : action.intent === 'primary'
-                          ? 'text-indigo-700 hover:bg-indigo-50 border-indigo-200'
-                          : 'text-gray-700 hover:bg-gray-100 border-gray-300';
                       return (
                         <button
                           key={action.key}
                           type="button"
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-xs ${disabled ? 'opacity-50 cursor-not-allowed' : base}`}
+                          className={getActionClass(action.intent)}
                           onClick={() => !disabled && action.onAction(row)}
                           aria-label={action.label}
                           title={action.tooltip || action.label}
                           disabled={disabled}
                         >
                           {action.icon}
-                          <span className="hidden sm:inline">{action.label}</span>
+                          <span>{action.label}</span>
                         </button>
                       );
                     })}
