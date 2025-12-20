@@ -13,6 +13,7 @@ import { MaintenanceModeComponent } from "./components/MaintenanceModeComponent"
 import { CodeSnippetsComponent } from "./components/CodeSnippetsComponent";
 import { FormsComponent } from "./components/FormsComponent";
 import { NewslettersComponent } from "./components/NewslettersComponent";
+import { QuickLinksComponent } from "./components/QuickLinksComponent";
 import { AppShell, useSidebarCollapsed } from "./components/layout/AppShell";
 import { AppHeader } from "./components/layout/AppHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
@@ -38,6 +39,7 @@ function MainTreeApp() {
 
     const allMenuOptions: MenuOption[] = useMemo(() => ([
         { label: 'Dashboard', link: 'dashboard', component: <DashboardComponent /> },
+        { label: 'Quick Links', link: 'quick-links', component: <QuickLinksComponent /> },
         { label: 'Settings', link: 'settings', component: <SettingsComponent /> },
         { label: 'ACF', link: 'acf', component: <ACFToolsComponent />, devMenuKey: 'dev_menu_acf' },
         { label: 'CPT UI', link: 'cptui', component: <CPTUIComponent />, devMenuKey: 'dev_menu_cptui' },

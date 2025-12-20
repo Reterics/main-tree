@@ -24,6 +24,9 @@ define( "MAIN_TREE_PLUGIN_DIR", plugin_dir_path( __FILE__ ) );
 // Forms storage option
 const MAIN_TREE_FORMS_OPTION = 'mt_forms_store';
 
+// Quick Links storage option
+const MAIN_TREE_QUICK_LINKS_OPTION = 'mt_quick_links_store';
+
 // Email Templates CPT constants
 const MT_EMAIL_TEMPLATE_CPT = 'mt_email_template';
 const MT_EMAIL_TEMPLATE_META = [
@@ -282,6 +285,47 @@ add_action('rest_api_init', function () {
     register_rest_route(MAIN_TREE_API, '/forms/(?P<id>[^/]+)/duplicate', array(
         'methods' => 'POST',
         'callback' => 'mt_forms_duplicate',
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        }
+    ));
+
+    // QUICK LINKS: list
+    register_rest_route(MAIN_TREE_API, '/quick-links', array(
+        'methods' => 'GET',
+        'callback' => 'mt_quick_links_list',
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        }
+    ));
+    // QUICK LINKS: create
+    register_rest_route(MAIN_TREE_API, '/quick-links', array(
+        'methods' => 'POST',
+        'callback' => 'mt_quick_links_create',
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        }
+    ));
+    // QUICK LINKS: update
+    register_rest_route(MAIN_TREE_API, '/quick-links/(?P<id>[^/]+)', array(
+        'methods' => 'PUT',
+        'callback' => 'mt_quick_links_update',
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        }
+    ));
+    // QUICK LINKS: delete
+    register_rest_route(MAIN_TREE_API, '/quick-links/(?P<id>[^/]+)', array(
+        'methods' => 'DELETE',
+        'callback' => 'mt_quick_links_delete',
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        }
+    ));
+    // QUICK LINKS: reorder
+    register_rest_route(MAIN_TREE_API, '/quick-links/reorder', array(
+        'methods' => 'POST',
+        'callback' => 'mt_quick_links_reorder',
         'permission_callback' => function () {
             return current_user_can('manage_options');
         }
@@ -552,6 +596,181 @@ function mt_forms_duplicate(WP_REST_Request $request) {
     $forms[] = $new;
     mt_save_forms_store($forms);
     return new WP_REST_Response(array('success' => true, 'form' => $new), 201);
+}
+
+// -------------------- QUICK LINKS BACKEND --------------------
+/**
+ * Load all stored quick links from option. Ensures array structure.
+ */
+function mt_load_quick_links_store() {
+    $stored = get_option(MAIN_TREE_QUICK_LINKS_OPTION);
+    if (is_string($stored)) {
+        $decoded = json_decode($stored, true);
+        return is_array($decoded) ? $decoded : array();
+    }
+    return is_array($stored) ? $stored : array();
+}
+
+/**
+ * Save quick links array into option as JSON.
+ */
+function mt_save_quick_links_store(array $links) {
+    return update_option(MAIN_TREE_QUICK_LINKS_OPTION, json_encode(array_values($links)));
+}
+
+function mt_quick_links_find_index_by_id($links, $id) {
+    foreach ($links as $i => $link) {
+        if (is_array($link) && isset($link['id']) && $link['id'] === $id) {
+            return $i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * REST: GET /quick-links
+ */
+function mt_quick_links_list(WP_REST_Request $request) {
+    $links = mt_load_quick_links_store();
+    return new WP_REST_Response($links, 200);
+}
+
+/**
+ * REST: POST /quick-links — create a quick link
+ * Expected payload: { label: string, url: string, description?: string, icon?: string, openInNewTab?: bool }
+ */
+function mt_quick_links_create(WP_REST_Request $request) {
+    $data = $request->get_json_params();
+    if (!is_array($data)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid JSON'), 400);
+    }
+    $label = isset($data['label']) ? sanitize_text_field($data['label']) : '';
+    $url = isset($data['url']) ? esc_url_raw($data['url']) : '';
+    $description = isset($data['description']) ? sanitize_text_field($data['description']) : '';
+    $icon = isset($data['icon']) ? sanitize_text_field($data['icon']) : '';
+    $openInNewTab = !empty($data['openInNewTab']);
+
+    if ($label === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Label is required'), 400);
+    }
+    if ($url === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'URL is required'), 400);
+    }
+
+    $links = mt_load_quick_links_store();
+    $id = uniqid('ql_', true);
+    $newLink = array(
+        'id' => $id,
+        'label' => $label,
+        'url' => $url,
+        'description' => $description,
+        'icon' => $icon,
+        'openInNewTab' => $openInNewTab,
+    );
+    $links[] = $newLink;
+    mt_save_quick_links_store($links);
+
+    return new WP_REST_Response(array('success' => true, 'link' => $newLink), 201);
+}
+
+/**
+ * REST: PUT /quick-links/:id — update a quick link
+ */
+function mt_quick_links_update(WP_REST_Request $request) {
+    $id = $request->get_param('id');
+    if (!is_string($id) || $id === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid id'), 400);
+    }
+    $data = $request->get_json_params();
+    if (!is_array($data)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid JSON'), 400);
+    }
+
+    $links = mt_load_quick_links_store();
+    $idx = mt_quick_links_find_index_by_id($links, $id);
+    if ($idx === -1) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Not found'), 404);
+    }
+
+    $label = isset($data['label']) ? sanitize_text_field($data['label']) : '';
+    $url = isset($data['url']) ? esc_url_raw($data['url']) : '';
+    $description = isset($data['description']) ? sanitize_text_field($data['description']) : '';
+    $icon = isset($data['icon']) ? sanitize_text_field($data['icon']) : '';
+    $openInNewTab = !empty($data['openInNewTab']);
+
+    if ($label === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Label is required'), 400);
+    }
+    if ($url === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'URL is required'), 400);
+    }
+
+    $links[$idx]['label'] = $label;
+    $links[$idx]['url'] = $url;
+    $links[$idx]['description'] = $description;
+    $links[$idx]['icon'] = $icon;
+    $links[$idx]['openInNewTab'] = $openInNewTab;
+
+    mt_save_quick_links_store($links);
+
+    return new WP_REST_Response(array('success' => true, 'link' => $links[$idx]), 200);
+}
+
+/**
+ * REST: DELETE /quick-links/:id
+ */
+function mt_quick_links_delete(WP_REST_Request $request) {
+    $id = $request->get_param('id');
+    if (!is_string($id) || $id === '') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid id'), 400);
+    }
+    $links = mt_load_quick_links_store();
+    $idx = mt_quick_links_find_index_by_id($links, $id);
+    if ($idx === -1) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Not found'), 404);
+    }
+    array_splice($links, $idx, 1);
+    mt_save_quick_links_store($links);
+    return new WP_REST_Response(array('success' => true), 200);
+}
+
+/**
+ * REST: POST /quick-links/reorder — reorder quick links
+ * Expected payload: { ids: string[] }
+ */
+function mt_quick_links_reorder(WP_REST_Request $request) {
+    $data = $request->get_json_params();
+    if (!is_array($data) || !isset($data['ids']) || !is_array($data['ids'])) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid payload'), 400);
+    }
+
+    $ids = $data['ids'];
+    $links = mt_load_quick_links_store();
+
+    // Build a map of id => link
+    $linksMap = array();
+    foreach ($links as $link) {
+        if (isset($link['id'])) {
+            $linksMap[$link['id']] = $link;
+        }
+    }
+
+    // Reorder based on provided ids
+    $reordered = array();
+    foreach ($ids as $id) {
+        if (isset($linksMap[$id])) {
+            $reordered[] = $linksMap[$id];
+            unset($linksMap[$id]);
+        }
+    }
+    // Append any remaining links not in the ids list
+    foreach ($linksMap as $link) {
+        $reordered[] = $link;
+    }
+
+    mt_save_quick_links_store($reordered);
+
+    return new WP_REST_Response(array('success' => true, 'links' => $reordered), 200);
 }
 
 /**
@@ -1120,3 +1339,131 @@ add_action('elementor/editor/after_enqueue_scripts', function() {
     $inline = 'window.mtEmailFieldsOptions = ' . wp_json_encode($options) . ';';
     wp_add_inline_script('mt-email-editor', $inline, 'before');
 });
+
+// -------------------- QUICK LINKS DASHBOARD WIDGET --------------------
+/**
+ * Register the Quick Links dashboard widget
+ */
+add_action('wp_dashboard_setup', function() {
+    $links = mt_load_quick_links_store();
+    // Only show widget if there are quick links configured
+    if (!empty($links)) {
+        wp_add_dashboard_widget(
+            'mt_quick_links_widget',
+            __('Quick Links', MAIN_TREE),
+            'mt_render_quick_links_widget'
+        );
+    }
+});
+
+/**
+ * Map icon keys to WordPress dashicons
+ */
+function mt_get_dashicon_class($icon_key) {
+    $icon_map = array(
+        'link' => 'dashicons-admin-links',
+        'home' => 'dashicons-admin-home',
+        'globe' => 'dashicons-admin-site-alt3',
+        'chart' => 'dashicons-chart-line',
+        'users' => 'dashicons-groups',
+        'star' => 'dashicons-star-filled',
+        'heart' => 'dashicons-heart',
+        'book' => 'dashicons-book',
+        'calendar' => 'dashicons-calendar-alt',
+        'folder' => 'dashicons-portfolio',
+        'image' => 'dashicons-format-image',
+        'cart' => 'dashicons-cart',
+        'card' => 'dashicons-money-alt',
+        'bell' => 'dashicons-bell',
+        'lock' => 'dashicons-lock',
+        'cloud' => 'dashicons-cloud-upload',
+        'database' => 'dashicons-database',
+        'file' => 'dashicons-media-document',
+        'play' => 'dashicons-controls-play',
+        'comments' => 'dashicons-admin-comments',
+        'megaphone' => 'dashicons-megaphone',
+        'settings' => 'dashicons-admin-generic',
+        'mail' => 'dashicons-email',
+        'code' => 'dashicons-editor-code',
+        'info' => 'dashicons-info',
+    );
+    return isset($icon_map[$icon_key]) ? $icon_map[$icon_key] : 'dashicons-admin-links';
+}
+
+/**
+ * Render the Quick Links dashboard widget
+ */
+function mt_render_quick_links_widget() {
+    $links = mt_load_quick_links_store();
+
+    if (empty($links)) {
+        echo '<p>' . esc_html__('No quick links configured.', MAIN_TREE) . '</p>';
+        return;
+    }
+
+    echo '<style>
+        .mt-ql-widget { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .mt-ql-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px;
+            background: #f6f7f7;
+            border: 1px solid #dcdcde;
+            border-radius: 4px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.15s ease;
+        }
+        .mt-ql-item:hover {
+            background: #fff;
+            border-color: #2271b1;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .mt-ql-item:focus {
+            outline: 2px solid #2271b1;
+            outline-offset: 2px;
+        }
+        .mt-ql-label {
+            font-weight: 500;
+            font-size: 13px;
+            color: #1d2327;
+            margin-bottom: 2px;
+        }
+        .mt-ql-desc {
+            font-size: 11px;
+            color: #646970;
+            line-height: 1.3;
+        }
+        .mt-ql-icon {
+            width: 16px;
+            height: 16px;
+            margin-bottom: 4px;
+            color: #2271b1;
+        }
+    </style>';
+
+    echo '<div class="mt-ql-widget">';
+    foreach ($links as $link) {
+        $label = isset($link['label']) ? esc_html($link['label']) : '';
+        $url = isset($link['url']) ? esc_url($link['url']) : '#';
+        $description = isset($link['description']) ? esc_html($link['description']) : '';
+        $icon = isset($link['icon']) ? sanitize_key($link['icon']) : 'link';
+        $openInNewTab = !empty($link['openInNewTab']);
+        $target = $openInNewTab ? ' target="_blank" rel="noopener noreferrer"' : '';
+        $dashicon_class = mt_get_dashicon_class($icon);
+
+        echo '<a href="' . $url . '" class="mt-ql-item"' . $target . '>';
+        echo '<span class="dashicons ' . esc_attr($dashicon_class) . ' mt-ql-icon"></span>';
+        echo '<span class="mt-ql-label">' . $label . '</span>';
+        if ($description) {
+            echo '<span class="mt-ql-desc">' . $description . '</span>';
+        }
+        echo '</a>';
+    }
+    echo '</div>';
+
+    // Add link to manage quick links
+    $manage_url = admin_url('admin.php?page=' . MAIN_TREE . '#quick-links');
+    echo '<p style="margin-top: 12px; margin-bottom: 0;"><a href="' . esc_url($manage_url) . '">' . esc_html__('Manage Quick Links', MAIN_TREE) . '</a></p>';
+}

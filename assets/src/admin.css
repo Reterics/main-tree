@@ -534,6 +534,57 @@
     color: var(--mt-danger);
 }
 
+/* Icon Grid (for icon selectors) */
+.mt-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+    gap: 4px;
+    padding: 8px;
+    background: var(--mt-bg);
+    border: 1px solid var(--mt-border);
+    border-radius: var(--mt-radius);
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.mt-icon-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--mt-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mt-icon-option:hover {
+    background: var(--mt-bg-card);
+    border-color: var(--mt-border);
+    color: var(--mt-text);
+}
+
+.mt-icon-option-selected {
+    background: var(--mt-primary-bg);
+    border-color: var(--mt-primary);
+    color: var(--mt-primary);
+}
+
+.mt-icon-option-selected:hover {
+    background: var(--mt-primary-bg);
+    border-color: var(--mt-primary);
+    color: var(--mt-primary);
+}
+
+.mt-icon-muted {
+    color: var(--mt-text-muted);
+    font-size: 10px;
+}
+
 /* Code */
 .mt-code {
     font-family: "SF Mono", Consolas, monospace;

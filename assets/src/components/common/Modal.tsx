@@ -27,8 +27,15 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const lastActiveEl = useRef<Element | null>(null);
+  const onCloseRef = useRef(onClose);
   const generatedTitleId = titleId || `modal-title-${Math.random().toString(36).substr(2, 9)}`;
 
+  // Keep onClose ref updated without triggering effects
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Handle focus and keyboard events - only runs when open changes
   useEffect(() => {
     if (!open) return;
     lastActiveEl.current = document.activeElement;
@@ -36,14 +43,16 @@ export const Modal: React.FC<ModalProps> = ({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
     document.addEventListener('keydown', onKey);
+
+    // Focus first input element, not the close button
     const t = setTimeout(() => {
       const el = dialogRef.current?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
+        'input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      ) || dialogRef.current?.querySelector<HTMLElement>('button, [href]');
       el?.focus();
     }, 0);
 
@@ -54,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
         lastActiveEl.current.focus();
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
